@@ -90,6 +90,36 @@ ESP8266WebServer& WifiHelper::getServerReference() {
     return server;
 }
 
+// TODO, Try working on this
+String WifiHelper::validatePostForm() {
+    String data = "";
+
+    // NOTE, This is how you get body data ("plain") -> body
+    if (!server.hasArg("plain")) {
+        // server.send(400, "text/plain", "Body not received");
+        // return ;
+        data = "Body not received";
+        return data;
+    }
+
+    // TODO, Add other things here
+}
+
+String WifiHelper::getJSONObject(cJSON * jObj, const char * objectname) {
+    String data = "";
+    cJSON * object = cJSON_GetObjectItemCaseSensitive(jObj, objectname);
+    if (object == NULL) {
+        // server.send(400, "text/plain", "PASSWORD Parameter is required");
+        // return ;
+        return data;
+    }
+    char * password = object->valuestring;
+    data = String(password);
+    return data;
+}
+
+// * PRIVATE -----------------
+
 void WifiHelper::handleNotFound() {
     server.send(404, "text/plain", "Request Invalid");
 }
@@ -165,13 +195,13 @@ void APManager::handleConnectWifi() {
     static bool connecting = false;
     
     if (connecting) {
-        server.send(400, "text/plain", "Trying to establish connection");
+        server.send(400, manager::contentType::TEXT_PLAIN, "Trying to establish connection");
         return ;
     }
 
     // NOTE, This is how you get body data ("plain") -> body
     if (!server.hasArg("plain")) {
-        server.send(400, "text/plain", "Body not received");
+        server.send(400, manager::contentType::TEXT_PLAIN, manager::responses::HTTP_BODYMISSING);
         return ;
     }
 
@@ -179,53 +209,35 @@ void APManager::handleConnectWifi() {
     String message = server.arg("plain");
     cJSON * jObj = cJSON_Parse(message.c_str());
     if (jObj == NULL) {
-        server.send(400, "text/plain", "Invalid JSON Object");
+        server.send(400, manager::contentType::TEXT_PLAIN, manager::responses::INVALIDJSON);
         return;
     }
 
-    // Get ssidObject and passwordObject
-    cJSON * ssidObject = cJSON_GetObjectItemCaseSensitive(jObj, manager::wifi::SSID);
-    if (ssidObject == NULL) {
-        server.send(400, "text/plain", "SSID Parameter is required");
+    // * Get the objects here and test for condition
+    String ssid = getJSONObject(jObj, manager::wifi::SSID);
+    String password = getJSONObject(jObj, manager::wifi::PASSWORD);
+
+    if (ssid.equals("") || password.equals("")) {
+        server.send(400, manager::contentType::TEXT_PLAIN, "SSID/PASSWORD parameters are required");
         return ;
     }
-    char * ssid = ssidObject->valuestring;
-
-    cJSON * passwordObject = cJSON_GetObjectItemCaseSensitive(jObj, manager::wifi::PASSWORD);
-    if (passwordObject == NULL) {
-        server.send(400, "text/plain", "PASSWORD Parameter is required");
-        return ;
-    }
-    char * password = passwordObject->valuestring;
-
-    // Store ssid and password to new variable
-    // Gets deleted during cJSON_Delete
-    char * storeSSID = (char *) malloc(strlen(ssid)*sizeof(char));
-    memset(storeSSID, 0, sizeof(char));
-    strcpy(storeSSID, ssid);
-
-    char * storePassword = (char *) malloc(strlen(password)*sizeof(char));
-    memset(storePassword, 0, sizeof(char));
-    strcpy(storePassword, password);
-
     // ? debug
-    Serial.printf("%s && %s\n", storeSSID, storePassword);
+    Serial.printf("%s && %s\n", ssid.c_str(), password.c_str());
 
     // ! Cleanup
     cJSON_Delete(jObj);
 
     // send
     // delay is added so that the user gets the response before Wifi mode is changed
-    server.send(200, "text/plain", "Data has been sent, Trying to connect...");
+    server.send(200, manager::contentType::TEXT_PLAIN, "Data received. Connecting...");
     delay(500);
     connecting = true;
 
     // Try to connect here
     // DONE, Create wifiConnected function
-    startWiFi(storeSSID, storePassword);
+    startWiFi(ssid.c_str(), password.c_str());
     bool connected = checkWiFiConnect(15, false);
 
-    
     if (!connected) {
         Serial.println("Starting AP Portal again");
         startAP();
@@ -235,13 +247,7 @@ void APManager::handleConnectWifi() {
 
     Serial.println("Connected to WIFI Successfully...");    
     // Store the data here
-    saveWiFiConfig(storeSSID, storePassword);
-
-    // ! Cleanup
-    free(storeSSID);
-    free(storePassword);
-    storeSSID = NULL;
-    storePassword = NULL;
+    saveWiFiConfig(ssid.c_str(), password.c_str());
 
     // NOTE, Set this at the very end
     isServerRunning = false;
@@ -250,6 +256,7 @@ void APManager::handleConnectWifi() {
 
 // // * ------ GET FUNCTIONS ---------
 
+// TODO, text/json
 void APManager::handleDeviceInfo() {
 
     // DONE, We need to send MacAddress
@@ -260,7 +267,7 @@ void APManager::handleDeviceInfo() {
     cJSON * mac = cJSON_CreateString(DeviceMac.c_str());
     cJSON_AddItemToObject(object, manager::device::MACADDR, mac);
 
-    server.send(200, "text/plain", cJSON_Print(object));
+    server.send(200, manager::contentType::APPLICATION_JSON, cJSON_Print(object));
 
     // ! Clean up object
     cJSON_Delete(object);
@@ -280,6 +287,7 @@ void APManager::handleDeviceInfo() {
  * }
  */
 // DONE
+// TODO, text/json
 void APManager::handleScanInfo() {
 
     cJSON * object = cJSON_CreateObject();
@@ -302,7 +310,7 @@ void APManager::handleScanInfo() {
     cJSON_AddItemToObject(object, manager::device::NETWORKS, networkArray);
 
     // Send the object
-    server.send(200, "text/plain", cJSON_Print(object));
+    server.send(200, manager::contentType::APPLICATION_JSON, cJSON_Print(object));
 
     // ! Clean the object
     cJSON_Delete(object);

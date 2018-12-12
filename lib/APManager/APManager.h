@@ -26,6 +26,14 @@ namespace manager {
       const char MACADDR[] = "macaddr";
       const char NETWORKS[] = "networks";
   }
+  namespace contentType {
+      const char APPLICATION_JSON[] = "application/json";
+      const char TEXT_PLAIN[] = "text/plain";
+  }
+  namespace responses {
+      const char HTTP_BODYMISSING[] = "HTTP Body missing";
+      const char INVALIDJSON[] = "Invalid JSON object received";
+  }
 };
 
 class WifiHelper {
@@ -62,6 +70,10 @@ public:
 
     // DONE
     ESP8266WebServer& getServerReference();
+
+    // * Methods to use
+    String validatePostForm();
+    String getJSONObject(cJSON * jObj, const char * objectname);
 };
 
 class APManager : public WifiHelper {
