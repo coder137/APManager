@@ -90,7 +90,7 @@ ESP8266WebServer& WifiHelper::getServerReference() {
     return server;
 }
 
-// TODO, Try working on this
+// TODO, Work on this
 String WifiHelper::validatePostForm() {
     String data = "";
 
@@ -102,7 +102,8 @@ String WifiHelper::validatePostForm() {
         return data;
     }
 
-    // TODO, Add other things here
+    // DONE, Add other things here
+    return data;
 }
 
 String WifiHelper::getJSONObject(cJSON * jObj, const char * objectname) {
