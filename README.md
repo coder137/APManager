@@ -8,7 +8,7 @@ Table of Contents
     - [/deviceInfo](#deviceinfo)
     - [/scanInfo](#scaninfo)
   - [POST](#post)
-    - [/connectWiFi](#connectwifi)
+    - [/connectWifi](#connectwifi)
 
 # APManager
 
@@ -70,7 +70,7 @@ This request scans for access points near the device
 
 ## POST
 
-### /connectWiFi
+### /connectWifi
 
 Tries to establish connection to the device
 
