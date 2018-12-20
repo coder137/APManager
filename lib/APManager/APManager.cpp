@@ -1,7 +1,8 @@
 #include "APManager.h"
 
 // DONE
-void WifiHelper::startWiFi(const char * ssid, const char * password) {
+void WifiHelper::startWiFi(const char *ssid, const char *password)
+{
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
@@ -22,21 +23,27 @@ void WifiHelper::startWiFi(const char * ssid, const char * password) {
  * bool noTimeout -> false (timeout to check if WIFI is connected)
  * bool noTimeout -> true (loops forever) TEST
  */
-bool WifiHelper::checkWiFiConnect(int counterMatch, bool noTimeout) {
+bool WifiHelper::checkWiFiConnect(int counterMatch, bool noTimeout)
+{
     int counter = 0;
-    while(1) {
-        if (WiFi.status() != WL_CONNECTED) {
+    while (1)
+    {
+        if (WiFi.status() != WL_CONNECTED)
+        {
             Serial.printf(".");
             delay(1000);
             counter++;
-        } 
+        }
 
-        if (WiFi.status() == WL_CONNECTED) {
+        if (WiFi.status() == WL_CONNECTED)
+        {
             return true;
         }
 
-        if(!noTimeout) {
-            if (counter >= counterMatch) {
+        if (!noTimeout)
+        {
+            if (counter >= counterMatch)
+            {
                 return false;
             }
         }
@@ -44,7 +51,8 @@ bool WifiHelper::checkWiFiConnect(int counterMatch, bool noTimeout) {
 }
 
 // DONE
-bool WifiHelper::startAP() {
+bool WifiHelper::startAP()
+{
     String ap_ssid = "ESP-" + WiFi.macAddress();
     WiFi.mode(WIFI_AP);
     boolean result = WiFi.softAP(ap_ssid.c_str(), ap_ssid.c_str());
@@ -54,7 +62,8 @@ bool WifiHelper::startAP() {
 
 // TODO, Add more debug apis here
 // DONE, Remove lambdas from here
-void WifiHelper::startWebserver(int port) {
+void WifiHelper::startWebserver(int port)
+{
 
     server.onNotFound(std::bind(&APManager::handleNotFound, this));
 
@@ -64,19 +73,23 @@ void WifiHelper::startWebserver(int port) {
     Serial.println("Started webserver");
 }
 
-void WifiHelper::saveToFile(const char * filename, const char *param1, const char * param2, bool overwrite) {
-    if(!overwrite) {
+void WifiHelper::saveToFile(const char *filename, const char *param1, const char *param2, bool overwrite)
+{
+    if (!overwrite)
+    {
         bool found = SPIFFS.exists(filename);
-        if(found) {
+        if (found)
+        {
             Serial.println("Overwrite for file is false!!");
-            return ;
+            return;
         }
     }
 
     File f = SPIFFS.open(filename, "w");
-    if (!f) {
+    if (!f)
+    {
         Serial.println("File open FAILED");
-        return ;
+        return;
     }
 
     f.println(param1);
@@ -86,16 +99,19 @@ void WifiHelper::saveToFile(const char * filename, const char *param1, const cha
     Serial.printf("Written %s::%s to file--%s\n", param1, param2, filename);
 }
 
-ESP8266WebServer& WifiHelper::getServerReference() {
+ESP8266WebServer &WifiHelper::getServerReference()
+{
     return server;
 }
 
 // TODO, Work on this
-String WifiHelper::validatePostForm() {
+String WifiHelper::validatePostForm()
+{
     String data = "";
 
     // NOTE, This is how you get body data ("plain") -> body
-    if (!server.hasArg("plain")) {
+    if (!server.hasArg("plain"))
+    {
         // server.send(400, "text/plain", "Body not received");
         // return ;
         data = "Body not received";
@@ -106,22 +122,25 @@ String WifiHelper::validatePostForm() {
     return data;
 }
 
-String WifiHelper::getJSONObject(cJSON * jObj, const char * objectname) {
+String WifiHelper::getJSONObject(cJSON *jObj, const char *objectname)
+{
     String data = "";
-    cJSON * object = cJSON_GetObjectItemCaseSensitive(jObj, objectname);
-    if (object == NULL) {
+    cJSON *object = cJSON_GetObjectItemCaseSensitive(jObj, objectname);
+    if (object == NULL)
+    {
         // server.send(400, "text/plain", "PASSWORD Parameter is required");
         // return ;
         return data;
     }
-    char * password = object->valuestring;
+    char *password = object->valuestring;
     data = String(password);
     return data;
 }
 
 // * PRIVATE -----------------
 
-void WifiHelper::handleNotFound() {
+void WifiHelper::handleNotFound()
+{
     server.send(404, "text/plain", "Request Invalid");
 }
 
@@ -129,23 +148,27 @@ void WifiHelper::handleNotFound() {
 
 // DONE
 // TODO, Migrate to APManager
-int APManager::autoconnect() {
+int APManager::autoconnect()
+{
     // DONE, Check if SPiffs file is present or no
     bool check = SPIFFS.exists(manager::file::WIFITXT);
-    if (!check) {
-        // Does not exist        
+    if (!check)
+    {
+        // Does not exist
         Serial.printf("%s does not exist\n", manager::file::WIFITXT);
 
         // DONE, Start AP here
         bool started = startAP();
-        if(!started) {
+        if (!started)
+        {
             Serial.println("Could NOT start SOFTAP");
             return AP_ERROR;
         }
         Serial.println("Started SOFTAP");
-        
+
         startWebserver(80);
-        while(serverRunning()) {
+        while (serverRunning())
+        {
             server.handleClient();
         }
         server.close();
@@ -172,44 +195,55 @@ int APManager::autoconnect() {
 
     // NOTE, Since noTimeout is True, connected will only return TRUE
     // * Pass false to the parameter to enable checking (add your own custom code below it)
-    checkWiFiConnect(15, true);
+    bool connected = checkWiFiConnect(15, true);
+    if (!connected)
+    {
+        SPIFFS.remove(manager::file::WIFITXT);
+        autoconnect();
+    }
     return STARTED;
 }
 
-void APManager::configureServer() {
+void APManager::configureServer()
+{
     // HTTP POST
     server.on(manager::endpoint::CONNECTWIFI, HTTP_POST, std::bind(&APManager::handleConnectWifi, this));
-    
+
     // HTTP GET
     server.on(manager::endpoint::DEVICEINFO, HTTP_GET, std::bind(&APManager::handleDeviceInfo, this));
     server.on(manager::endpoint::SCANINFO, HTTP_GET, std::bind(&APManager::handleScanInfo, this));
 }
 
-void APManager::saveWiFiConfig(const char * ssid, const char * password) {
+void APManager::saveWiFiConfig(const char *ssid, const char *password)
+{
     saveToFile(manager::file::WIFITXT, ssid, password, true);
 }
 
 // DONE, Get the JSON body here
 // DONE, Parse the JSON
 // DONE, Try to reconnect to router
-void APManager::handleConnectWifi() {
+void APManager::handleConnectWifi()
+{
     static bool connecting = false;
-    
-    if (connecting) {
+
+    if (connecting)
+    {
         server.send(400, manager::contentType::TEXT_PLAIN, "Trying to establish connection");
-        return ;
+        return;
     }
 
     // NOTE, This is how you get body data ("plain") -> body
-    if (!server.hasArg("plain")) {
+    if (!server.hasArg("plain"))
+    {
         server.send(400, manager::contentType::TEXT_PLAIN, manager::responses::HTTP_BODYMISSING);
-        return ;
+        return;
     }
 
     // DONE, Parse the JSON received here
     String message = server.arg("plain");
-    cJSON * jObj = cJSON_Parse(message.c_str());
-    if (jObj == NULL) {
+    cJSON *jObj = cJSON_Parse(message.c_str());
+    if (jObj == NULL)
+    {
         server.send(400, manager::contentType::TEXT_PLAIN, manager::responses::INVALIDJSON);
         return;
     }
@@ -218,9 +252,10 @@ void APManager::handleConnectWifi() {
     String ssid = getJSONObject(jObj, manager::wifi::SSID);
     String password = getJSONObject(jObj, manager::wifi::PASSWORD);
 
-    if (ssid.equals("") || password.equals("")) {
+    if (ssid.equals("") || password.equals(""))
+    {
         server.send(400, manager::contentType::TEXT_PLAIN, "SSID/PASSWORD parameters are required");
-        return ;
+        return;
     }
     // ? debug
     Serial.printf("%s && %s\n", ssid.c_str(), password.c_str());
@@ -239,14 +274,15 @@ void APManager::handleConnectWifi() {
     startWiFi(ssid.c_str(), password.c_str());
     bool connected = checkWiFiConnect(15, false);
 
-    if (!connected) {
+    if (!connected)
+    {
         Serial.println("Starting AP Portal again");
         startAP();
         connecting = false;
-        return ;
+        return;
     }
 
-    Serial.println("Connected to WIFI Successfully...");    
+    Serial.println("Connected to WIFI Successfully...");
     // Store the data here
     saveWiFiConfig(ssid.c_str(), password.c_str());
 
@@ -254,18 +290,18 @@ void APManager::handleConnectWifi() {
     isServerRunning = false;
 }
 
-
 // // * ------ GET FUNCTIONS ---------
 
 // TODO, text/json
-void APManager::handleDeviceInfo() {
+void APManager::handleDeviceInfo()
+{
 
     // DONE, We need to send MacAddress
     String DeviceMac = WiFi.macAddress();
 
     // DONE, Create a JSON string here
-    cJSON * object = cJSON_CreateObject();
-    cJSON * mac = cJSON_CreateString(DeviceMac.c_str());
+    cJSON *object = cJSON_CreateObject();
+    cJSON *mac = cJSON_CreateString(DeviceMac.c_str());
     cJSON_AddItemToObject(object, manager::device::MACADDR, mac);
 
     server.send(200, manager::contentType::APPLICATION_JSON, cJSON_Print(object));
@@ -289,18 +325,20 @@ void APManager::handleDeviceInfo() {
  */
 // DONE
 // TODO, text/json
-void APManager::handleScanInfo() {
+void APManager::handleScanInfo()
+{
 
-    cJSON * object = cJSON_CreateObject();
-    cJSON * networkArray = cJSON_CreateArray();
+    cJSON *object = cJSON_CreateObject();
+    cJSON *networkArray = cJSON_CreateArray();
 
     int networks = WiFi.scanNetworks();
 
     String data = "";
-    for(int i=0;i<networks;i++) {
-        cJSON * networkObject = cJSON_CreateObject();
-        cJSON * ssid = cJSON_CreateString(WiFi.SSID(i).c_str());
-        cJSON * rssi = cJSON_CreateNumber(WiFi.RSSI(i));
+    for (int i = 0; i < networks; i++)
+    {
+        cJSON *networkObject = cJSON_CreateObject();
+        cJSON *ssid = cJSON_CreateString(WiFi.SSID(i).c_str());
+        cJSON *rssi = cJSON_CreateNumber(WiFi.RSSI(i));
         cJSON_AddItemToObject(networkObject, manager::wifi::SSID, ssid);
         cJSON_AddItemToObject(networkObject, manager::wifi::RSSI, rssi);
         cJSON_AddItemToArray(networkArray, networkObject);
