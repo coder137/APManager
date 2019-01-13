@@ -295,7 +295,6 @@ void APManager::handleConnectWifi()
 // TODO, text/json
 void APManager::handleDeviceInfo()
 {
-
     // DONE, We need to send MacAddress
     String DeviceMac = WiFi.macAddress();
 
@@ -303,10 +302,14 @@ void APManager::handleDeviceInfo()
     cJSON *object = cJSON_CreateObject();
     cJSON *mac = cJSON_CreateString(DeviceMac.c_str());
     cJSON_AddItemToObject(object, manager::device::MACADDR, mac);
+    // TODO, Add other deviceInformation here
 
-    server.send(200, manager::contentType::APPLICATION_JSON, cJSON_Print(object));
+    // NOTE, Send info
+    char *deviceInfo = cJSON_Print(object);
+    server.send(200, manager::contentType::APPLICATION_JSON, deviceInfo);
 
     // ! Clean up object
+    free(deviceInfo);
     cJSON_Delete(object);
 }
 
