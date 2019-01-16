@@ -352,8 +352,10 @@ void APManager::handleScanInfo()
     cJSON_AddItemToObject(object, manager::device::NETWORKS, networkArray);
 
     // Send the object
-    server.send(200, manager::contentType::APPLICATION_JSON, cJSON_Print(object));
+    char *networkInfo = cJSON_Print(object);
+    server.send(200, manager::contentType::APPLICATION_JSON, networkInfo);
 
     // ! Clean the object
+    free(networkInfo);
     cJSON_Delete(object);
 }
